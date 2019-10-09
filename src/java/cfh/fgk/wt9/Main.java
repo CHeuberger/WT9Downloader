@@ -3,6 +3,7 @@ package cfh.fgk.wt9;
 import static java.awt.GridBagConstraints.*;
 
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -26,6 +27,9 @@ public class Main {
     public static void main(String[] args) {
         new Main();
     }
+    
+    private final static String DOWNLOAD_URL = "download.html";
+    private final static String ACTION_URL = DOWNLOAD_URL + "?spage=%d&npage=%d&action=download";
     
     private final Pattern PAGE_RANGE = Pattern.compile("(?m)"
             + "<b>START PAGE</b><br>"
@@ -72,6 +76,7 @@ public class Main {
         panel.add(download, gbcField);
         
         log.setEditable(false);
+        log.setFont(new Font("monospaced", Font.PLAIN, 12));
         log.setColumns(60);
         log.setRows(20);
         
@@ -97,7 +102,7 @@ public class Main {
             return;
         }
         
-        log("Download page loaded: %d%n", body.length());
+        log("download page loaded: %d%n", body.length());
         final var matcher = PAGE_RANGE.matcher(body);
         if (!matcher.find() || matcher.group(1) == null) {
             handle(new IOException("unable to find page range"));
@@ -106,7 +111,7 @@ public class Main {
         }
         
         final int first = Integer.parseInt(matcher.group(1));
-        log("first: %d%n", first);
+        log("  first: %d%n", first);
         if (matcher.group(2) == null) {
             startModel.setValue(first);
             startModel.setMinimum(first);
@@ -117,7 +122,7 @@ public class Main {
             enable(true);
         } else {
             final int last = Integer.parseInt(matcher.group(2));
-            log("last: %d%n", last);
+            log("  last: %d%n", last);
             startModel.setValue(first);
             startModel.setMinimum(first);
             startModel.setMaximum(last);
@@ -129,13 +134,28 @@ public class Main {
     }
     
     private void doDownload(ActionEvent ev) {
-        // TODO
+        var first = startModel.getNumber().intValue();
+        var last = endModel.getNumber().intValue();
+        log("download pages %d to %d%n", first, last);
+        var builder = new StringBuilder();
+        try {
+            while (first <= last) {
+                var step = Math.min(last-first+1, 1);
+                String text = client.get(String.format(ACTION_URL, first, step));
+                builder.append(text);
+                log("  %d + %d: %d%n", first, step, text.length());
+                first += step;
+            }
+        } catch (Exception ex) {
+            handle(ex);
+        }
+        log("  read %d%n<%s>%n", builder.length(), builder);
     }
     
     private void enable(boolean enabled) {
         start.setEnabled(enabled);
         end.setEnabled(enabled && (int)endModel.getMaximum() != (int)endModel.getMinimum());
-        download.setEnabled(enabled && (int)startModel.getValue() <= (int)endModel.getValue());
+        download.setEnabled(enabled && startModel.getNumber().intValue() <= endModel.getNumber().intValue());
     }
     
     private void log(String format, Object... args) {
