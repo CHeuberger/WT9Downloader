@@ -21,6 +21,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
 
 public class Main {
 
@@ -54,10 +55,10 @@ public class Main {
     
     private void initGUI() {
         start.setModel(startModel);
-        startModel.addChangeListener(e -> enable(true));
-        
         end.setModel(endModel);
-        endModel.addChangeListener(e -> enable(true));
+        
+        startModel.addChangeListener(this::doSpinner);
+        endModel.addChangeListener(this::doSpinner);
         
         download.addActionListener(this::doDownload);
         
@@ -77,7 +78,7 @@ public class Main {
         
         log.setEditable(false);
         log.setFont(new Font("monospaced", Font.PLAIN, 12));
-        log.setColumns(60);
+        log.setColumns(80);
         log.setRows(20);
         
         frame.setLayout(new BorderLayout());
@@ -140,7 +141,7 @@ public class Main {
         var builder = new StringBuilder();
         try {
             while (first <= last) {
-                var step = Math.min(last-first+1, 1);
+                var step = Math.min(last-first+1, 5);
                 String text = client.get(String.format(ACTION_URL, first, step));
                 builder.append(text);
                 log("  %d + %d: %d%n", first, step, text.length());
@@ -150,6 +151,19 @@ public class Main {
             handle(ex);
         }
         log("  read %d%n<%s>%n", builder.length(), builder);
+    }
+    
+    private void doSpinner(ChangeEvent ev) {
+        if (ev.getSource() == startModel) {
+            if (endModel.getNumber().intValue() < startModel.getNumber().intValue()) {
+                endModel.setValue(start.getValue());
+            }
+        } else {
+            if (startModel.getNumber().intValue() > endModel.getNumber().intValue()) {
+                startModel.setValue(endModel.getValue());
+            }
+        }
+        enable(true);
     }
     
     private void enable(boolean enabled) {
