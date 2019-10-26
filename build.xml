@@ -26,7 +26,11 @@
   <target name="dist" depends="compile"
         description="generate the distribution">
     <mkdir dir="${dist}"/>
-    <jar jarfile="${dist}/lib/MyProject-${DSTAMP}.jar" basedir="${build}"/>
+    <jar 
+    	jarfile="${dist}/lib/WT9Downloader.jar" 
+    	basedir="${build}"
+    	manifest="src/manifest.txt"
+    />
   </target>
 
   <target name="clean"

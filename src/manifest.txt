@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Main-Class: cfh.fgk.wt9.Main
+Implementation-Title: WT9Downloader
+Implementation-Version: 0.1
+Implementation-Vendor: Carlos F Heuberger
