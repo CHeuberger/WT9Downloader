@@ -12,6 +12,7 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Writer;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
@@ -34,7 +35,37 @@ import javax.swing.event.ChangeEvent;
 public class Main {
 
     public static void main(String[] args) {
-        new Main();
+        boolean test = false;
+        for (var i = 0; i < args.length; i++) {
+            String arg = args[i];
+            if (arg.equals("-h")) {
+                usage(null);
+                return;
+            } else if (arg.equals("-t")) {
+                test = true;
+            } else {
+                usage("unrecognized parameter " + arg);
+                return;
+            }
+        }
+        new Main(test);
+    }
+    
+    private static void usage(String message) {
+        PrintStream out;
+        if (message != null) {
+            out = System.err;
+            out.println();
+            out.println(message);
+        } else {
+            out = System.out;
+        }
+        out.println();
+        out.println("""
+                    Options:
+                       -h    this help
+                       -t    test mode, read test data
+                    """);
     }
     
     private final static String DOWNLOAD_URL = "download.html";
@@ -57,9 +88,10 @@ public class Main {
     private final SpinnerNumberModel endModel = new SpinnerNumberModel(9999, 1, 9999, 1);
     
     private final Settings settings = Settings.instance;
-    private final Client client = new Client();
+    private final Client client;
     
-    private Main() {
+    private Main(boolean test) {
+        client = test ? new TestClient() : new Client();
         SwingUtilities.invokeLater(this::initGUI);
     }
     
@@ -120,7 +152,7 @@ public class Main {
             }
             @Override
             protected void done() {
-                super.done();
+                reload.setEnabled(true);
                 if (!isCancelled()) {
                     String body;
                     try {
@@ -165,6 +197,8 @@ public class Main {
             }
         };
         
+        reload.setEnabled(false);
+        enable(false);
         log("reloading...%n");
         worker.execute();
     }
