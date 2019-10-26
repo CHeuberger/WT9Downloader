@@ -13,9 +13,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -26,6 +28,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.event.ChangeEvent;
 
 public class Main {
@@ -45,18 +48,18 @@ public class Main {
     private final JFrame frame = new JFrame();
     private final JSpinner start = new JSpinner();
     private final JSpinner end = new JSpinner();
+    private final JButton reload = new JButton("Reload");
     private final JButton download = new JButton("Download");
+    private final JButton clear = new JButton("Clear");
     private final JTextArea log = new JTextArea();
     
     private final SpinnerNumberModel startModel = new SpinnerNumberModel(1, 1, 9999, 1);
     private final SpinnerNumberModel endModel = new SpinnerNumberModel(9999, 1, 9999, 1);
     
-    private final Settings settings;
-    private final Client client;
-
+    private final Settings settings = Settings.instance;
+    private final Client client = new Client();
+    
     private Main() {
-        settings = Settings.instance;
-        client = new TestClient();
         SwingUtilities.invokeLater(this::initGUI);
     }
     
@@ -67,7 +70,16 @@ public class Main {
         startModel.addChangeListener(this::doSpinner);
         endModel.addChangeListener(this::doSpinner);
         
+        reload.addActionListener(this::doReload);
         download.addActionListener(this::doDownload);
+        clear.addActionListener(this::doClear);
+        
+        var buttons = Box.createHorizontalBox();
+        buttons.add(reload);
+        buttons.add(Box.createHorizontalStrut(10));
+        buttons.add(download);
+        buttons.add(Box.createHorizontalGlue());
+        buttons.add(clear);
         
         enable(false);
         
@@ -81,7 +93,7 @@ public class Main {
         panel.add(start, gbcField);
         panel.add(new JLabel("End: "), gbcLabel);
         panel.add(end, gbcField);
-        panel.add(download, gbcField);
+        panel.add(buttons, new GridBagConstraints(RELATIVE, RELATIVE, REMAINDER, 1, 1.0, 0.0,BASELINE_LEADING, HORIZONTAL, insets , 0, 0));
         
         log.setEditable(false);
         log.setFont(new Font("monospaced", Font.PLAIN, 12));
@@ -101,50 +113,71 @@ public class Main {
     }
     
     private void reload() {
-        log("reload%n");
-        String body;
-        try {
-            body = client.get("download.html");
-        } catch (Exception ex) {
-            handle(ex);
-            return;
-        }
+        var worker = new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return client.get("download.html");
+            }
+            @Override
+            protected void done() {
+                super.done();
+                if (!isCancelled()) {
+                    String body;
+                    try {
+                        body = get();
+                    } catch (ExecutionException ex) {
+                        handle(ex.getCause());
+                        return;
+                    } catch (Exception ex) {
+                        handle(ex);
+                        return;
+                    }
+                    log("download page loaded: %d%n", body.length());
+                    final var matcher = PAGE_RANGE.matcher(body);
+                    if (!matcher.find() || matcher.group(1) == null) {
+                        handle(new IOException("unable to find page range"));
+                        enable(false);
+                        return;
+                    }
+                    
+                    final int first = Integer.parseInt(matcher.group(1));
+                    log("  first: %d%n", first);
+                    if (matcher.group(2) == null) {
+                        startModel.setValue(first);
+                        startModel.setMinimum(first);
+                        startModel.setMaximum(first);
+                        endModel.setValue(first);
+                        endModel.setMinimum(first);
+                        endModel.setMaximum(first);
+                        enable(true);
+                    } else {
+                        final int last = Integer.parseInt(matcher.group(2));
+                        log("  last: %d%n", last);
+                        startModel.setValue(first);
+                        startModel.setMinimum(first);
+                        startModel.setMaximum(last);
+                        endModel.setMinimum(first);
+                        endModel.setMaximum(last);
+                        endModel.setValue(last);
+                        enable(true);
+                    }
+                }
+            }
+        };
         
-        log("download page loaded: %d%n", body.length());
-        final var matcher = PAGE_RANGE.matcher(body);
-        if (!matcher.find() || matcher.group(1) == null) {
-            handle(new IOException("unable to find page range"));
-            enable(false);
-            return;
-        }
-        
-        final int first = Integer.parseInt(matcher.group(1));
-        log("  first: %d%n", first);
-        if (matcher.group(2) == null) {
-            startModel.setValue(first);
-            startModel.setMinimum(first);
-            startModel.setMaximum(first);
-            endModel.setValue(first);
-            endModel.setMinimum(first);
-            endModel.setMaximum(first);
-            enable(true);
-        } else {
-            final int last = Integer.parseInt(matcher.group(2));
-            log("  last: %d%n", last);
-            startModel.setValue(first);
-            startModel.setMinimum(first);
-            startModel.setMaximum(last);
-            endModel.setMinimum(first);
-            endModel.setMaximum(last);
-            endModel.setValue(last);
-            enable(true);
-        }
+        log("reloading...%n");
+        worker.execute();
+    }
+    
+    private void doReload(ActionEvent ev) {
+        enable(false);
+        reload();
     }
     
     private void doDownload(ActionEvent ev) {
         var first = startModel.getNumber().intValue();
         var last = endModel.getNumber().intValue();
-        log("download pages %d to %d%n", first, last);
+        log("pages %d to %d%n", first, last);
         
         var file = settings.lastFile();
         var chooser = new JFileChooser();
@@ -160,7 +193,6 @@ public class Main {
         file = chooser.getSelectedFile();
         settings.lastFile(file);
         
-        // TODO exists?
         if (file.exists()) {
             var message = new String[] {
                 file.getName(),
@@ -203,8 +235,13 @@ public class Main {
         } catch (Exception ex) {
             handle(ex);
         }
-        log("  read %d%n<%s>%n", builder.length(), builder);
+        log("  read %d%n", builder.length());
         log("  saved to %s%n", file);
+        System.out.printf("read <%s>%n%d%n", builder, builder.length());
+    }
+    
+    private void doClear(ActionEvent ev) {
+        log.setText("");
     }
     
     private void doSpinner(ChangeEvent ev) {
@@ -228,10 +265,11 @@ public class Main {
     
     private void log(String format, Object... args) {
         log.append(String.format(format, args));
+        // TODO scroll
     }
     
-    private void handle(Exception ex) {
-        ex.printStackTrace();
-        log("%n%s%n", ex);
+    private void handle(Throwable throwable) {
+        throwable.printStackTrace();
+        log("%n%s%n", throwable);
     }
 }
