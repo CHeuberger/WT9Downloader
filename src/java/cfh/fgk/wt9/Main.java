@@ -1,6 +1,7 @@
 package cfh.fgk.wt9;
 
 import static java.awt.GridBagConstraints.*;
+import static javax.swing.JOptionPane.*;
 
 import java.awt.BorderLayout;
 import java.awt.Font;
@@ -8,11 +9,15 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -46,9 +51,11 @@ public class Main {
     private final SpinnerNumberModel startModel = new SpinnerNumberModel(1, 1, 9999, 1);
     private final SpinnerNumberModel endModel = new SpinnerNumberModel(9999, 1, 9999, 1);
     
+    private final Settings settings;
     private final Client client;
-    
+
     private Main() {
+        settings = Settings.instance;
         client = new TestClient();
         SwingUtilities.invokeLater(this::initGUI);
     }
@@ -138,11 +145,57 @@ public class Main {
         var first = startModel.getNumber().intValue();
         var last = endModel.getNumber().intValue();
         log("download pages %d to %d%n", first, last);
+        
+        var file = settings.lastFile();
+        var chooser = new JFileChooser();
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.setFileSelectionMode(chooser.FILES_ONLY);
+        chooser.setMultiSelectionEnabled(false);
+        chooser.setCurrentDirectory(file.getAbsoluteFile().getParentFile());
+        chooser.setSelectedFile(file);
+        if (chooser.showSaveDialog(frame) != chooser.APPROVE_OPTION) {
+            log("canceled%n%n");
+            return;
+        }
+        file = chooser.getSelectedFile();
+        settings.lastFile(file);
+        
+        // TODO exists?
+        if (file.exists()) {
+            var message = new String[] {
+                file.getName(),
+                "File already exists.",
+                "Overwrite?"
+            };
+            if (showConfirmDialog(frame, message, "Confirm", YES_NO_OPTION) != YES_OPTION) {
+                log("  canceled%n%n");
+                return;
+            }
+            var name = file.getName();
+            var index = name.lastIndexOf('.');
+            if (index != -1) {
+                name = name.substring(0, index);
+            }
+            var bak = new File(file.getParentFile(), name + ".bak");
+            if (bak.exists()) {
+                if (bak.delete()) {
+                    log("  deleted %s%n", bak);
+                }
+            }
+            if (file.renameTo(bak)) {
+                log("  %s renamed to %s%n", file, bak.getName());
+            } else {
+                log("unable to rename %s to %s%n", file, bak.getName());
+                return;
+            }
+        }
+        
         var builder = new StringBuilder();
-        try {
+        try (Writer out = new FileWriter(file)) {
             while (first <= last) {
                 var step = Math.min(last-first+1, 5);
                 String text = client.get(String.format(ACTION_URL, first, step));
+                out.append(text);
                 builder.append(text);
                 log("  %d + %d: %d%n", first, step, text.length());
                 first += step;
@@ -151,6 +204,7 @@ public class Main {
             handle(ex);
         }
         log("  read %d%n<%s>%n", builder.length(), builder);
+        log("  saved to %s%n", file);
     }
     
     private void doSpinner(ChangeEvent ev) {
