@@ -3,7 +3,8 @@
   	Download EMS Data from Logger
   </description>
   <!-- set global properties for this build -->
-  <property name="src" location="src/java"/>
+  <property name="src" location="src"/>
+  <property name="java" location="src/java"/>
   <property name="build" location="build"/>
   <property name="dist" location="dist"/>
 
@@ -15,7 +16,7 @@
   <target name="compile" depends="init"
         description="compile the source">
     <javac 
-    	srcdir="${src}" 
+    	srcdir="${java}" 
     	destdir="${build}" 
     	debug="true"
     	release="13">
@@ -26,10 +27,13 @@
   <target name="dist" depends="compile"
         description="generate the distribution">
     <mkdir dir="${dist}"/>
+  	<copy todir="${dist}">
+  		<fileset dir="${src}" excludes="java/**,manifest.txt"/>
+  	</copy>
     <jar 
     	jarfile="${dist}/lib/WT9Downloader.jar" 
     	basedir="${build}"
-    	manifest="src/manifest.txt"
+    	manifest="${src}/manifest.txt"
     />
   </target>
 
