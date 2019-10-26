@@ -14,6 +14,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Writer;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 
@@ -293,7 +294,7 @@ public class Main {
     
     private void enable(boolean enabled) {
         start.setEnabled(enabled);
-        end.setEnabled(enabled && (int)endModel.getMaximum() != (int)endModel.getMinimum());
+        end.setEnabled(enabled && !Objects.equals(endModel.getMaximum(), endModel.getMinimum()));
         download.setEnabled(enabled && startModel.getNumber().intValue() <= endModel.getNumber().intValue());
     }
     

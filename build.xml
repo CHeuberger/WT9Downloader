@@ -1,0 +1,37 @@
+<project name="WT9Downloader" default="dist" basedir=".">
+  <description>
+  	Download EMS Data from Logger
+  </description>
+  <!-- set global properties for this build -->
+  <property name="src" location="src/java"/>
+  <property name="build" location="build"/>
+  <property name="dist" location="dist"/>
+
+  <target name="init">
+    <tstamp/>
+    <mkdir dir="${build}"/>
+  </target>
+
+  <target name="compile" depends="init"
+        description="compile the source">
+    <javac 
+    	srcdir="${src}" 
+    	destdir="${build}" 
+    	debug="true"
+    	release="13">
+    	<compilerarg value="--enable-preview"/>
+    </javac>
+  </target>
+
+  <target name="dist" depends="compile"
+        description="generate the distribution">
+    <mkdir dir="${dist}"/>
+    <jar jarfile="${dist}/lib/MyProject-${DSTAMP}.jar" basedir="${build}"/>
+  </target>
+
+  <target name="clean"
+        description="clean up">
+    <delete dir="${build}"/>
+    <delete dir="${dist}"/>
+  </target>
+</project>
