@@ -7,6 +7,7 @@
   <property name="java" location="src/java"/>
   <property name="build" location="build"/>
   <property name="dist" location="dist"/>
+  <property name="deploy" location="deploy"/>
 
   <target name="init">
     <tstamp/>
@@ -37,9 +38,16 @@
     />
   </target>
 
+  <target name="deploy" depends="dist"
+        description="generate the deployment">
+    <mkdir dir="${deploy}"/>
+  	<zip destfile="${deploy}/wt9log.zip" basedir="${dist}"/>
+  </target>
+
   <target name="clean"
         description="clean up">
     <delete dir="${build}"/>
     <delete dir="${dist}"/>
+    <delete dir="${deploy}"/>
   </target>
 </project>

@@ -1,5 +1,6 @@
 /.settings/
 /build/
+/deploy/
 /dist/
 *.swp
 *~
