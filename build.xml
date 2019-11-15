@@ -20,8 +20,8 @@
     	srcdir="${java}" 
     	destdir="${build}" 
     	debug="true"
-    	release="13">
-    	<compilerarg value="--enable-preview"/>
+    	release="8"
+    	includeantruntime="false">
     </javac>
   </target>
 

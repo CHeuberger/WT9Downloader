@@ -16,6 +16,7 @@ import java.io.PrintStream;
 import java.io.Writer;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.swing.BorderFactory;
@@ -37,7 +38,7 @@ public class Main {
 
     public static void main(String[] args) {
         boolean test = false;
-        for (var i = 0; i < args.length; i++) {
+        for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (arg.equals("-h")) {
                 usage(null);
@@ -62,11 +63,9 @@ public class Main {
             out = System.out;
         }
         out.println();
-        out.println("""
-                    Options:
-                       -h    this help
-                       -t    test mode, read test data
-                    """);
+        out.println("Options:\n"
+                + "    -h    this help\n"
+                + "    -t    test mode, read test data\n");
     }
     
     private final static String DOWNLOAD_URL = "download.html";
@@ -92,7 +91,7 @@ public class Main {
     private final Client client;
     
     private Main(boolean test) {
-        client = test ? new TestClient() : new Client();
+        client = test ? new TestClient() : new Client13();
         SwingUtilities.invokeLater(this::initGUI);
     }
     
@@ -107,7 +106,7 @@ public class Main {
         download.addActionListener(this::doDownload);
         clear.addActionListener(this::doClear);
         
-        var buttons = Box.createHorizontalBox();
+        Box buttons = Box.createHorizontalBox();
         buttons.add(reload);
         buttons.add(Box.createHorizontalStrut(10));
         buttons.add(download);
@@ -116,11 +115,11 @@ public class Main {
         
         enable(false);
         
-        var insets = new Insets(2, 2, 2, 2);
-        var gbcLabel = new GridBagConstraints(0, RELATIVE, 1, 1, 0.0, 0.0,BASELINE_LEADING, NONE, insets , 0, 0);
-        var gbcField = new GridBagConstraints(RELATIVE, RELATIVE, REMAINDER, 1, 1.0, 0.0,BASELINE_LEADING, NONE, insets , 0, 0);
+        Insets insets = new Insets(2, 2, 2, 2);
+        GridBagConstraints gbcLabel = new GridBagConstraints(0, RELATIVE, 1, 1, 0.0, 0.0,BASELINE_LEADING, NONE, insets , 0, 0);
+        GridBagConstraints gbcField = new GridBagConstraints(RELATIVE, RELATIVE, REMAINDER, 1, 1.0, 0.0,BASELINE_LEADING, NONE, insets , 0, 0);
         
-        var panel = new JPanel(new GridBagLayout());
+        JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createRaisedSoftBevelBorder());
         panel.add(new JLabel("Start: "), gbcLabel);
         panel.add(start, gbcField);
@@ -146,7 +145,7 @@ public class Main {
     }
     
     private void reload() {
-        var worker = new SwingWorker<String, Void>() {
+        SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
             @Override
             protected String doInBackground() throws Exception {
                 return client.get("download.html");
@@ -166,7 +165,7 @@ public class Main {
                         return;
                     }
                     log("download page loaded: %d%n", body.length());
-                    final var matcher = PAGE_RANGE.matcher(body);
+                    final Matcher matcher = PAGE_RANGE.matcher(body);
                     if (!matcher.find() || matcher.group(1) == null) {
                         handle(new IOException("unable to find page range"));
                         enable(false);
@@ -210,12 +209,12 @@ public class Main {
     }
     
     private void doDownload(ActionEvent ev) {
-        var first = startModel.getNumber().intValue();
-        var last = endModel.getNumber().intValue();
+        int first = startModel.getNumber().intValue();
+        int last = endModel.getNumber().intValue();
         log("pages %d to %d%n", first, last);
         
-        var file = settings.lastFile();
-        var chooser = new JFileChooser();
+        File file = settings.lastFile();
+        JFileChooser chooser = new JFileChooser();
         chooser.setAcceptAllFileFilterUsed(true);
         chooser.setFileSelectionMode(chooser.FILES_ONLY);
         chooser.setMultiSelectionEnabled(false);
@@ -229,7 +228,7 @@ public class Main {
         settings.lastFile(file);
         
         if (file.exists()) {
-            var message = new String[] {
+            Object message = new String[] {
                 file.getName(),
                 "File already exists.",
                 "Overwrite?"
@@ -238,29 +237,29 @@ public class Main {
                 log("  canceled%n%n");
                 return;
             }
-            var name = file.getName();
-            var index = name.lastIndexOf('.');
+            String name = file.getName();
+            int index = name.lastIndexOf('.');
             if (index != -1) {
                 name = name.substring(0, index);
             }
-            var bak = new File(file.getParentFile(), name + ".bak");
+            File bak = new File(file.getParentFile(), name + ".bak");
             if (bak.exists()) {
                 if (bak.delete()) {
                     log("  deleted %s%n", bak);
                 }
             }
             if (file.renameTo(bak)) {
-                log("  %s renamed to %s%n", file, bak.getName());
+//                log("  %s renamed to %s%n", file, bak.getName());
             } else {
                 log("unable to rename %s to %s%n", file, bak.getName());
                 return;
             }
         }
         
-        var builder = new StringBuilder();
+        StringBuilder builder = new StringBuilder();
         try (Writer out = new FileWriter(file)) {
             while (first <= last) {
-                var step = Math.min(last-first+1, 5);
+                int step = Math.min(last-first+1, 5);
                 String text = client.get(String.format(ACTION_URL, first, step));
                 out.append(text);
                 builder.append(text);

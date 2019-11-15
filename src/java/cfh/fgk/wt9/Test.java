@@ -1,10 +1,9 @@
 package cfh.fgk.wt9;
 
-import static java.net.http.HttpClient.*;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
@@ -25,11 +24,11 @@ public class Test {
 }
     
     private static void get(String url) {
-        var client = HttpClient.newBuilder()
+        HttpClient client = HttpClient.newBuilder()
                 .version(Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(20))
                 .build();
-        var request = HttpRequest.newBuilder()
+        HttpRequest request = HttpRequest.newBuilder()
                 .GET()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(20))
@@ -45,12 +44,12 @@ public class Test {
     }
     
     private static void download(String format, int start, int count) {
-        var client = HttpClient.newBuilder()
+        HttpClient client = HttpClient.newBuilder()
                 .version(Version.HTTP_1_1)
                 .build();
-        var data = new StringBuilder();
+        StringBuilder data = new StringBuilder();
         for (var i = 0; i < count; i++) {
-            var url = String.format(format, start+i, 1);
+            String url = String.format(format, start+i, 1);
             var request = HttpRequest.newBuilder()
                     .GET()
                     .uri(URI.create(url))
