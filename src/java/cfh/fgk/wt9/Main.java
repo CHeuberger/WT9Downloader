@@ -91,7 +91,7 @@ public class Main {
     private final Client client;
     
     private Main(boolean test) {
-        client = test ? new TestClient() : new Client13();
+        client = test ? new TestClient() : new Client8();
         SwingUtilities.invokeLater(this::initGUI);
     }
     

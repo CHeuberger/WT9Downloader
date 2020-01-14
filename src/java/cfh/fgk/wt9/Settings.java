@@ -15,6 +15,7 @@ public class Settings {
     public String url() {
         // TODO
         return "http://192.168.4.1/";
+//        return "https://www.w3.org/People/mimasa/test/base/";
     }
     
     public int timeout() {
